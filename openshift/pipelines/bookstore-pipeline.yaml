@@ -8,11 +8,13 @@ spec:
   params:
     - name: git-url
       type: string
+      description: "URL of the bookstore github repository"
   tasks:
+    # 1. FETCH REPOSITORY: Download code to PVC
     - name: fetch-repository
       taskRef:
         name: git-clone
-        kind: Task # Looking for the Task we installed in your namespace
+        kind: Task
       workspaces:
         - name: output
           workspace: shared-data
@@ -22,6 +24,7 @@ spec:
         - name: revision
           value: "main"
 
+    # 2. BUILD IMAGES: Trigger OpenShift Binary Builds from the PVC folders
     - name: build-images
       runAfter: [fetch-repository]
       taskRef:
@@ -33,21 +36,31 @@ spec:
       params:
         - name: SCRIPT
           value: |
+            echo "Starting Database Build..."
             oc start-build bookstore-db-build --from-dir=$(workspaces.manifest-dir.path)/database --follow
+            
+            echo "Starting Backend Build..."
             oc start-build bookstore-backend-build --from-dir=$(workspaces.manifest-dir.path)/backend --follow
+            
+            echo "Starting Frontend Build..."
             oc start-build bookstore-frontend-build --from-dir=$(workspaces.manifest-dir.path)/frontend --follow
 
+    # 3. SCAN BACKEND: Security check on the produced image
     - name: scan-backend
       runAfter: [build-images]
       taskRef:
         name: trivy-scanner
         kind: Task
+      workspaces:
+        - name: manifest-dir
+          workspace: shared-data
       params:
         - name: IMAGE_PATH
           value: "bookstore-backend:1.0.0"
         - name: ARGS
           value: ["image", "--severity", "CRITICAL", "--exit-code", "1", "--ignore-unfixed"]
 
+    # 4. DEPLOY: Apply Kustomize manifests to the cluster
     - name: deploy-kustomize
       runAfter: [scan-backend]
       taskRef:
@@ -59,6 +72,13 @@ spec:
       params:
         - name: SCRIPT
           value: |
-            # Ensure this path matches your repo structure
+            # Navigate to your kustomization folder
             cd $(workspaces.manifest-dir.path)/openshift/base
+            
+            echo "Applying Kustomize manifests..."
             oc apply -k .
+            
+            echo "Waiting for deployments to stabilize..."
+            oc rollout status deployment/backend
+            oc rollout status deployment/frontend
+            echo "Pipeline Completed Successfully!"
