@@ -1,4 +1,3 @@
----
 
 ### 2. `SECURITY.md`
 **File Description:** Detailed security hardening and compliance documentation.
@@ -50,3 +49,4 @@ To audit the security status of a running pod:
 1. **Logs**: `oc logs deployment/backend` (Checks for unauthorized access attempts).
 2. **Scan History**: `tkn pipelinerun logs <run-name> -t scan-backend`.
 3. **Permissions**: `oc get rolebindings` (Ensures only the `pipeline` SA has edit rights).
+
