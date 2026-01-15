@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: bookstore-config
 data:
-  DB_NAME: "bookstore"
   DB_HOST: "mysql"
+  DB_USER: "bookuser"
+  DB_NAME: "bookstore"
   REDIS_URL: "redis://redis:6379"
-  APP_ENVIRONMENT: "production"

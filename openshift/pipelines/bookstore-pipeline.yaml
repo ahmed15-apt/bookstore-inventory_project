@@ -1,0 +1,53 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: bookstore-pipeline
+spec:
+  workspaces:
+    - name: shared-data
+  params:
+    - name: git-url
+      type: string
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+        kind: Task
+      workspaces:
+        - name: output
+          workspace: shared-data
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: "main"
+
+    - name: build-images
+      runAfter: [fetch-repository]
+      taskRef:
+        name: openshift-client
+        kind: Task
+      workspaces:
+        - name: manifest-dir
+          workspace: shared-data
+      params:
+        - name: SCRIPT
+          value: |
+            oc start-build bookstore-db-build --from-dir=$(workspaces.manifest-dir.path)/database --follow
+            oc start-build bookstore-redis-build --from-dir=$(workspaces.manifest-dir.path)/redis --follow
+            oc start-build bookstore-backend-build --from-dir=$(workspaces.manifest-dir.path)/backend --follow
+            oc start-build bookstore-frontend-build --from-dir=$(workspaces.manifest-dir.path)/frontend --follow
+
+    - name: deploy-kustomize
+      runAfter: [build-images]
+      taskRef:
+        name: openshift-client
+        kind: Task
+      workspaces:
+        - name: manifest-dir
+          workspace: shared-data
+      params:
+        - name: SCRIPT
+          value: |
+            cd $(workspaces.manifest-dir.path)
+            oc apply -k .

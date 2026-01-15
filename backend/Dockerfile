@@ -1,21 +1,14 @@
-# Stage 1: Build
 FROM node:18-alpine3.20 AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --only=production
-# Stage 2: Runtime (Distroless or Minimal Alpine)
-FROM node:18-alpine
+RUN npm ci --only=production
+
+FROM node:18-alpine3.20
 WORKDIR /app
-
-# Add non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Copy dependencies and code
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .
-
-# Security: Run as non-root
-USER appuser
-
+# OpenShift compatibility for restricted SCC
+RUN chown -R 1001:0 /app && chmod -R g=u /app
+USER 1001
 EXPOSE 3000
 CMD ["node", "server.js"]

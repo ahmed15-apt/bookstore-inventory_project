@@ -5,7 +5,7 @@ metadata:
 spec:
   ports:
   - port: 3306
-  clusterIP: None # Headless Service
+  clusterIP: None
   selector:
     tier: database
 ---
@@ -25,16 +25,10 @@ spec:
         tier: database
     spec:
       securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+        fsGroup: 1001
       containers:
       - name: mysql
-        # REPLACE WITH YOUR QUAY USERNAME
-        image: quay.io/12572624/bookstore-db:1.0.0
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 3306
+        image: bookstore-db:1.0.0
         env:
         - name: MYSQL_DATABASE
           value: "bookstore"
@@ -44,28 +38,19 @@ spec:
               name: bookstore-secrets
               key: MYSQL_ROOT_PASSWORD
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
           readOnlyRootFilesystem: true
-        # Fix for Read-Only FS: Mount temp dirs
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
-        - name: tmp-dir
+        - name: tmp
           mountPath: /tmp
-        - name: run-dir
+        - name: run
           mountPath: /var/run/mysqld
       volumes:
-      - name: tmp-dir
+      - name: tmp
         emptyDir: {}
-      - name: run-dir
+      - name: run
         emptyDir: {}
-  volumeClaimTemplates:
-  - metadata:
-      name: mysql-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim

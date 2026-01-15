@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: bookstore-run-
+spec:
+  pipelineRef:
+    name: bookstore-pipeline
+  params:
+    - name: git-url
+      value: "https://github.com/ahmed15-apt/bookstore-inventory_project.git"
+  workspaces:
+    - name: shared-data
+      persistentVolumeClaim:
+        claimName: bookstore-pipeline-pvc

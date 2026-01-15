@@ -5,8 +5,7 @@ metadata:
 spec:
   ports:
   - port: 6379
-    name: redis
-  clusterIP: None # Headless Service
+  clusterIP: None
   selector:
     tier: cache
 ---
@@ -25,21 +24,9 @@ spec:
       labels:
         tier: cache
     spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       containers:
       - name: redis
-        # REPLACE WITH YOUR QUAY USERNAME
-        image: quay.io/12572624/bookstore-redis:1.0.0
-        ports:
-        - containerPort: 6379
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-          readOnlyRootFilesystem: true
+        image: bookstore-redis:1.0.0
         volumeMounts:
         - name: redis-data
           mountPath: /data
