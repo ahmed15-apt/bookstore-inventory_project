@@ -12,8 +12,7 @@ spec:
     - name: fetch-repository
       taskRef:
         name: git-clone
-        kind: Task
-        apiVersion: tekton.dev/v1beta1
+        kind: Task # Looking for the Task we installed in your namespace
       workspaces:
         - name: output
           workspace: shared-data
@@ -28,7 +27,6 @@ spec:
       taskRef:
         name: openshift-client
         kind: Task
-        apiVersion: tekton.dev/v1beta1
       workspaces:
         - name: manifest-dir
           workspace: shared-data
@@ -55,13 +53,12 @@ spec:
       taskRef:
         name: openshift-client
         kind: Task
-        apiVersion: tekton.dev/v1beta1
       workspaces:
         - name: manifest-dir
           workspace: shared-data
       params:
         - name: SCRIPT
           value: |
-            # VERIFY THIS PATH
+            # Ensure this path matches your repo structure
             cd $(workspaces.manifest-dir.path)/openshift/base
             oc apply -k .
