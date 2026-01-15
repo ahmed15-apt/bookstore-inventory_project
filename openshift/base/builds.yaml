@@ -1,0 +1,83 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-db
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-db-build
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-db:1.0.0
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-backend
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-backend-build
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-backend:1.0.0
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-frontend
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-frontend-build
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-frontend:1.0.0
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-redis
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-redis-build
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-redis:1.0.0

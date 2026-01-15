@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevSecOps Bookstore | OpenShift 4.18</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="container">
+        <h1> Bookstore Inventory</h1>
+        <p class="status">Enterprise 4-Tier Architecture on OpenShift 4.18</p>
+    </header>
+
+    <main class="container">
+        <!-- The CSS looks for .books-grid -->
+        <div id="book-list" class="books-grid">
+            <div class="status">Connecting to database...</div>
+        </div>
+    </main>
+
+    <footer class="container" style="text-align: center; margin-top: 50px; color: #888; font-size: 0.8em;">
+        <p>Built with Node.js, Redis, and MySQL | Secured with OpenShift SCC</p>
+    </footer>
+
+    <script>
+        async function fetchBooks() {
+            const container = document.getElementById('book-list');
+            
+            try {
+                // Fetch data from our Node.js Backend
+                const response = await fetch('/api/books');
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const books = await response.json();
+
+                if (books.length === 0) {
+                    container.innerHTML = '<div class="status">No books found in the inventory.</div>';
+                    return;
+                }
+
+                // Injects HTML that matches your .book-card CSS
+                container.innerHTML = books.map(book => `
+                    <div class="book-card">
+                        <h3>${book.title}</h3>
+                        <p><strong>Author:</strong> ${book.author}</p>
+                        <p class="price">$${parseFloat(book.price).toFixed(2)}</p>
+                        <span class="tag">ISBN: ${book.isbn || 'N/A'}</span>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error("Application Error:", err);
+                container.innerHTML = `
+                    <div style="grid-column: 1/-1; background: #fff5f5; color: #c53030; padding: 20px; border-radius: 8px; border: 1px solid #feb2b2; text-align: center;">
+                        <h3>⚠️ Connection Error</h3>
+                        <p>The frontend cannot reach the backend API.</p>
+                        <code>${err.message}</code>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize the app
+        window.onload = fetchBooks;
+    </script>
+</body>
+</html>

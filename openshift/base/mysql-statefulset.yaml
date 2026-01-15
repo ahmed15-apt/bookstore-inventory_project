@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+  - port: 3306
+  clusterIP: None # Headless Service
+  selector:
+    tier: database
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: "mysql"
+  replicas: 1
+  selector:
+    matchLabels:
+      tier: database
+  template:
+    metadata:
+      labels:
+        tier: database
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: mysql
+        # REPLACE WITH YOUR QUAY USERNAME
+        image: quay.io/12572624/bookstore-db:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_DATABASE
+          value: "bookstore"
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bookstore-secrets
+              key: MYSQL_ROOT_PASSWORD
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          readOnlyRootFilesystem: true
+        # Fix for Read-Only FS: Mount temp dirs
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: tmp-dir
+          mountPath: /tmp
+        - name: run-dir
+          mountPath: /var/run/mysqld
+      volumes:
+      - name: tmp-dir
+        emptyDir: {}
+      - name: run-dir
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

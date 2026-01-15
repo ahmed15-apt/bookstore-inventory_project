@@ -1,0 +1,303 @@
+
+Report Summary
+
+┌────────────────────────────────┬────────────┬───────────────────┐
+│             Target             │    Type    │ Misconfigurations │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ autoscaling/backend-hpa.yaml   │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ autoscaling/backend-pdb.yaml   │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ autoscaling/frontend-hpa.yaml  │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/backend-deployment.yaml   │ kubernetes │         3         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/backend-ingress.yaml      │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/builds.yaml               │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/frontend-deployment.yaml  │ kubernetes │         3         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/mysql-statefulset.yaml    │ kubernetes │         3         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/namespace.yaml            │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/pvc.yaml                  │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/redis-statefulset.yaml    │ kubernetes │         3         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/route.yaml                │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ base/secret.yaml               │ kubernetes │         0         │
+├────────────────────────────────┼────────────┼───────────────────┤
+│ security/network-policies.yaml │ kubernetes │         0         │
+└────────────────────────────────┴────────────┴───────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+
+base/backend-deployment.yaml (kubernetes)
+=========================================
+Tests: 26 (SUCCESSES: 23, FAILURES: 3)
+Failures: 3 (HIGH: 3, CRITICAL: 0)
+
+AVD-KSV-0014 (HIGH): Container 'backend' of Deployment 'backend' should set 'securityContext.readOnlyRootFilesystem' to true
+════════════════════════════════════════
+An immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk.
+
+See https://avd.aquasec.com/misconfig/ksv014
+────────────────────────────────────────
+ base/backend-deployment.yaml:18-49
+────────────────────────────────────────
+  18 ┌       - name: backend
+  19 │         image: bookstore-backend:1.0.0
+  20 │         env:
+  21 │         - name: REDIS_URL
+  22 │           value: "redis://redis:6379"
+  23 │         - name: DB_HOST
+  24 │           value: "mysql"
+  25 │         - name: DB_PASSWORD
+  26 └           valueFrom:
+  ..   
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): container backend in default namespace is using the default security context
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/backend-deployment.yaml:18-49
+────────────────────────────────────────
+  18 ┌       - name: backend
+  19 │         image: bookstore-backend:1.0.0
+  20 │         env:
+  21 │         - name: REDIS_URL
+  22 │           value: "redis://redis:6379"
+  23 │         - name: DB_HOST
+  24 │           value: "mysql"
+  25 │         - name: DB_PASSWORD
+  26 └           valueFrom:
+  ..   
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): deployment backend in default namespace is using the default security context, which allows root privileges
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/backend-deployment.yaml:16-49
+────────────────────────────────────────
+  16 ┌     spec:
+  17 │       containers:
+  18 │       - name: backend
+  19 │         image: bookstore-backend:1.0.0
+  20 │         env:
+  21 │         - name: REDIS_URL
+  22 │           value: "redis://redis:6379"
+  23 │         - name: DB_HOST
+  24 └           value: "mysql"
+  ..   
+────────────────────────────────────────
+
+
+
+base/frontend-deployment.yaml (kubernetes)
+==========================================
+Tests: 26 (SUCCESSES: 23, FAILURES: 3)
+Failures: 3 (HIGH: 3, CRITICAL: 0)
+
+AVD-KSV-0014 (HIGH): Container 'frontend' of Deployment 'frontend' should set 'securityContext.readOnlyRootFilesystem' to true
+════════════════════════════════════════
+An immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk.
+
+See https://avd.aquasec.com/misconfig/ksv014
+────────────────────────────────────────
+ base/frontend-deployment.yaml:18-24
+────────────────────────────────────────
+  18 ┌       - name: frontend
+  19 │         image: bookstore-frontend:1.0.0
+  20 │         ports:
+  21 │         - containerPort: 8080
+  22 │         resources:
+  23 │           limits:
+  24 └             memory: "128Mi"
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): container frontend in default namespace is using the default security context
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/frontend-deployment.yaml:18-24
+────────────────────────────────────────
+  18 ┌       - name: frontend
+  19 │         image: bookstore-frontend:1.0.0
+  20 │         ports:
+  21 │         - containerPort: 8080
+  22 │         resources:
+  23 │           limits:
+  24 └             memory: "128Mi"
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): deployment frontend in default namespace is using the default security context, which allows root privileges
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/frontend-deployment.yaml:16-24
+────────────────────────────────────────
+  16 ┌     spec:
+  17 │       containers:
+  18 │       - name: frontend
+  19 │         image: bookstore-frontend:1.0.0
+  20 │         ports:
+  21 │         - containerPort: 8080
+  22 │         resources:
+  23 │           limits:
+  24 └             memory: "128Mi"
+────────────────────────────────────────
+
+
+
+base/mysql-statefulset.yaml (kubernetes)
+========================================
+Tests: 26 (SUCCESSES: 23, FAILURES: 3)
+Failures: 3 (HIGH: 3, CRITICAL: 0)
+
+AVD-KSV-0014 (HIGH): Container 'mysql' of StatefulSet 'mysql' should set 'securityContext.readOnlyRootFilesystem' to true
+════════════════════════════════════════
+An immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk.
+
+See https://avd.aquasec.com/misconfig/ksv014
+────────────────────────────────────────
+ base/mysql-statefulset.yaml:35-51
+────────────────────────────────────────
+  35 ┌       containers:
+  36 │       - name: mysql
+  37 │         image: bookstore-db:1.0.0
+  38 │         imagePullPolicy: IfNotPresent
+  39 │         env:
+  40 │         - name: MYSQL_DATABASE
+  41 │           value: "bookstore"
+  42 │         - name: MYSQL_ROOT_PASSWORD
+  43 └           valueFrom:
+  ..   
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): container mysql in default namespace is using the default security context
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/mysql-statefulset.yaml:35-51
+────────────────────────────────────────
+  35 ┌       containers:
+  36 │       - name: mysql
+  37 │         image: bookstore-db:1.0.0
+  38 │         imagePullPolicy: IfNotPresent
+  39 │         env:
+  40 │         - name: MYSQL_DATABASE
+  41 │           value: "bookstore"
+  42 │         - name: MYSQL_ROOT_PASSWORD
+  43 └           valueFrom:
+  ..   
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): statefulset mysql in default namespace is using the default security context, which allows root privileges
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/mysql-statefulset.yaml:33-51
+────────────────────────────────────────
+  33 ┌         tier: database
+  34 │     spec:
+  35 │       containers:
+  36 │       - name: mysql
+  37 │         image: bookstore-db:1.0.0
+  38 │         imagePullPolicy: IfNotPresent
+  39 │         env:
+  40 │         - name: MYSQL_DATABASE
+  41 └           value: "bookstore"
+  ..   
+────────────────────────────────────────
+
+
+
+base/redis-statefulset.yaml (kubernetes)
+========================================
+Tests: 26 (SUCCESSES: 23, FAILURES: 3)
+Failures: 3 (HIGH: 3, CRITICAL: 0)
+
+AVD-KSV-0014 (HIGH): Container 'redis' of StatefulSet 'redis' should set 'securityContext.readOnlyRootFilesystem' to true
+════════════════════════════════════════
+An immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk.
+
+See https://avd.aquasec.com/misconfig/ksv014
+────────────────────────────────────────
+ base/redis-statefulset.yaml:35-42
+────────────────────────────────────────
+  35 ┌       containers:
+  36 │       - name: redis
+  37 │         image: bookstore-redis:1.0.0
+  38 │         ports:
+  39 │         - containerPort: 6379
+  40 │           name: redis
+  41 │         volumeMounts:
+  42 └         - name: redis-data
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): container redis in default namespace is using the default security context
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/redis-statefulset.yaml:35-42
+────────────────────────────────────────
+  35 ┌       containers:
+  36 │       - name: redis
+  37 │         image: bookstore-redis:1.0.0
+  38 │         ports:
+  39 │         - containerPort: 6379
+  40 │           name: redis
+  41 │         volumeMounts:
+  42 └         - name: redis-data
+────────────────────────────────────────
+
+
+AVD-KSV-0118 (HIGH): statefulset redis in default namespace is using the default security context, which allows root privileges
+════════════════════════════════════════
+Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.
+
+See https://avd.aquasec.com/misconfig/ksv118
+────────────────────────────────────────
+ base/redis-statefulset.yaml:33-42
+────────────────────────────────────────
+  33 ┌         tier: cache
+  34 │     spec:
+  35 │       containers:
+  36 │       - name: redis
+  37 │         image: bookstore-redis:1.0.0
+  38 │         ports:
+  39 │         - containerPort: 6379
+  40 │           name: redis
+  41 │         volumeMounts:
+  42 └         - name: redis-data
+────────────────────────────────────────
+
+

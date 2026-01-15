@@ -1,0 +1,9 @@
+# REFERENCE DESIGN: In a production cluster, this file enforces the 
+# restricted security level. In the Red Hat Sandbox, this is 
+# pre-configured by the platform administrators.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bookstore-project
+  labels:
+    pod-security.kubernetes.io/enforce: restricted

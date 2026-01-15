@@ -1,0 +1,24 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: trivy-scanner
+spec:
+  params:
+    - name: image
+  workspaces:
+    - name: source
+  steps:
+    - name: scan
+      image: docker.io/aquasec/trivy:latest
+      script: |
+        #!/bin/sh
+        # Scan and save to a file in the shared workspace
+        trivy image --severity CRITICAL --output $(workspaces.source.path)/scan_report.txt --no-progress $(params.image)
+        
+        # Print results to the console
+        echo "⬇️ --- SECURITY REPORT START --- ⬇️"
+        cat $(workspaces.source.path)/scan_report.txt
+        echo "⬆️ --- SECURITY REPORT END --- ⬆️"
+        
+        # Fail the pipeline if Critical issues exist
+        trivy image --severity CRITICAL --exit-code 1 --no-progress $(params.image)

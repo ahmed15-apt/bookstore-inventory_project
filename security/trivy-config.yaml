@@ -1,0 +1,21 @@
+# Corrected Trivy Configuration
+format: table
+severity:
+  - HIGH
+  - CRITICAL
+output: "security/reports/scan-results.txt"
+
+scan:
+  scanners:
+    - vuln
+    - config
+    - secret
+  exit-code: 0
+
+misconfiguration:
+  scanners:
+    - kubernetes
+
+# This ensures Trivy looks for the right things in the code
+vulnerability:
+  ignore-unfixed: true

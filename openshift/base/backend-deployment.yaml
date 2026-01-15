@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: backend
+  template:
+    metadata:
+      labels:
+        tier: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: backend
+        # REPLACE WITH YOUR QUAY USERNAME
+        image: quay.io/12572624/bookstore-backend:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: backend-port
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          readOnlyRootFilesystem: true
+        env:
+        - name: DB_HOST
+          value: "mysql" # Connects to the Service name
+        - name: DB_USER
+          value: "bookuser"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bookstore-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          value: "bookstore"
+        - name: REDIS_URL
+          value: "redis://redis:6379" # Connects to Redis Service
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: backend-port
+          initialDelaySeconds: 15
+        volumeMounts:
+        - name: tmp-dir
+          mountPath: /tmp
+      volumes:
+      - name: tmp-dir
+        emptyDir: {}

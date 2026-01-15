@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-scan-deploy
+spec:
+  params:
+    - name: git-url
+    - name: image-name
+    - name: deployment-name
+    - name: resource-type
+      default: "deployment"
+    - name: context-dir
+      default: "."
+  workspaces:
+    - name: source
+  tasks:
+    # 1. Fetch Code
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+        apiVersion: tekton.dev/v1beta1  # <--- FIXED: Added API Version
+      workspaces:
+        - name: output
+          workspace: source
+      params:
+        - name: url
+          value: "$(params.git-url)"
+
+    # 2. Build & Push
+    - name: build-and-push
+      runAfter: [fetch-repository]
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+        apiVersion: tekton.dev/v1beta1  # <--- FIXED: Added API Version
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: IMAGE
+          value: "$(params.image-name)"
+        - name: CONTEXT
+          value: "$(params.context-dir)"
+        - name: TLSVERIFY
+          value: "true"
+
+    # 3. Security Scan (Custom Task - No change needed here)
+    - name: scan-image
+      runAfter: [build-and-push]
+      taskRef:
+        name: trivy-scanner
+        kind: Task
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: image
+          value: "$(params.image-name)"
+
+    # 4. Deploy
+    - name: deploy
+      runAfter: [scan-image]
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+        apiVersion: tekton.dev/v1beta1  # <--- FIXED: Added API Version
+      params:
+        - name: SCRIPT
+          value: |
+            KIND=$(params.resource-type)
+            NAME=$(params.deployment-name)
+            echo "🚀 Updating $KIND/$NAME..."
+            oc rollout restart $KIND/$NAME
+            oc rollout status $KIND/$NAME

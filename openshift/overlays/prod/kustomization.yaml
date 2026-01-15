@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base  # يرث كل الملفات الأساسية
+
+# تعديلات خاصة بالإنتاج فقط
+replicas:
+- name: backend
+  count: 3  # في البرودكشن بنشغل 3 نسخ
+- name: frontend
+  count: 2
+
+# إضافة كلمة prod لكل الموارد لتمييزها
+nameSuffix: "-prod"
+
+commonLabels:
+  environment: production
