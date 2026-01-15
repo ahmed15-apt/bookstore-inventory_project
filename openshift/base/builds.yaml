@@ -8,16 +8,49 @@ kind: BuildConfig
 metadata:
   name: bookstore-backend-build
 spec:
-  source:
-    type: Git
-    git:
-      uri: "https://github.com/YOUR_USER/YOUR_REPO.git"
-    contextDir: "backend"
-  strategy:
-    type: Docker
   output:
     to:
       kind: ImageStreamTag
       name: bookstore-backend:1.0.0
+  source:
+    type: Binary      # <--- MUST BE BINARY
+  strategy:
+    type: Docker
 ---
-# ... Repeat for frontend (contextDir: frontend), db (contextDir: database), and redis (contextDir: redis)
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-frontend
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-frontend-build
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-frontend:1.0.0
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-db
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-db-build
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-db:1.0.0
+  source:
+    type: Binary
+  strategy:
+    type: Docker
