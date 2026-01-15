@@ -13,7 +13,7 @@ spec:
       kind: ImageStreamTag
       name: bookstore-backend:1.0.0
   source:
-    type: Binary      # <--- MUST BE BINARY
+    type: Binary
   strategy:
     type: Docker
 ---
@@ -50,6 +50,25 @@ spec:
     to:
       kind: ImageStreamTag
       name: bookstore-db:1.0.0
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: bookstore-redis
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: bookstore-redis-build
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: bookstore-redis:1.0.0
   source:
     type: Binary
   strategy:

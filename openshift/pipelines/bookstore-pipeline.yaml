@@ -8,9 +8,8 @@ spec:
   params:
     - name: git-url
       type: string
-      description: "The URL of the bookstore git repository"
   tasks:
-    # 1. FETCH REPOSITORY: Download the source code from GitHub
+    # 1. FETCH REPOSITORY
     - name: fetch-repository
       taskRef:
         name: git-clone
@@ -24,8 +23,8 @@ spec:
         - name: revision
           value: "main"
 
-    # 2. BUILD IMAGES: Trigger OpenShift Binary Builds
-    - name: build-images
+    # 2. SETUP INFRASTRUCTURE: Create BuildConfigs, Secrets, and Services FIRST
+    - name: setup-infra
       runAfter: [fetch-repository]
       taskRef:
         name: openshift-client
@@ -36,16 +35,28 @@ spec:
       params:
         - name: SCRIPT
           value: |
-            echo "Building Database Image..."
+            cd $(workspaces.manifest-dir.path)/openshift/base
+            echo "Creating BuildConfigs and infrastructure..."
+            oc apply -k .
+
+    # 3. BUILD IMAGES: Now the BuildConfigs exist, we can start them
+    - name: build-images
+      runAfter: [setup-infra]
+      taskRef:
+        name: openshift-client
+        kind: Task
+      workspaces:
+        - name: manifest-dir
+          workspace: shared-data
+      params:
+        - name: SCRIPT
+          value: |
+            echo "Starting builds..."
             oc start-build bookstore-db-build --from-dir=$(workspaces.manifest-dir.path)/database --follow
-            
-            echo "Building Backend Image (Node:18)..."
             oc start-build bookstore-backend-build --from-dir=$(workspaces.manifest-dir.path)/backend --follow
-            
-            echo "Building Frontend Image..."
             oc start-build bookstore-frontend-build --from-dir=$(workspaces.manifest-dir.path)/frontend --follow
 
-    # 3. SCAN BACKEND IMAGE: Security check using Trivy
+    # 4. SCAN BACKEND
     - name: scan-backend
       runAfter: [build-images]
       taskRef:
@@ -58,43 +69,19 @@ spec:
         - name: IMAGE_PATH
           value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/bookstore-backend:1.0.0"
         - name: ARGS
-          value: [
-            "image", 
-            "--severity", "CRITICAL", 
-            "--exit-code", "1", 
-            "--ignore-unfixed",
-            "--clear-cache"
-          ]
+          value: ["image", "--severity", "CRITICAL", "--exit-code", "1", "--ignore-unfixed", "--clear-cache"]
 
-    # 4. DEPLOY KUSTOMIZE: Apply manifests with success verification
-    - name: deploy-kustomize
+    # 5. VERIFY DEPLOYMENT: Ensure the pods actually start with the new images
+    - name: verify-deployment
       runAfter: [scan-backend]
       taskRef:
         name: openshift-client
         kind: Task
-      workspaces:
-        - name: manifest-dir
-          workspace: shared-data
       params:
         - name: SCRIPT
           value: |
-            # 1. Enter the directory
-            cd $(workspaces.manifest-dir.path)/openshift/base
-            
-            # 2. Apply and capture errors
-            echo "Deploying Bookstore resources using commonLabels..."
-            oc apply -k .
-            
-            # 3. Success check
-            if [ $? -eq 0 ]; then
-                echo "Deployment command sent. Waiting for rollout status..."
-                # We use a timeout to prevent the pipeline from hanging forever
-                oc rollout status deployment/backend --timeout=120s
-                oc rollout status deployment/frontend --timeout=120s
-                
-                echo "--- DEPLOYMENT SUCCESSFUL ---"
-                echo "Frontend URL: http://$(oc get route bookstore-frontend -o jsonpath='{.spec.host}')"
-            else
-                echo "ERROR: Deployment failed. Please check your kustomization.yaml or YAML syntax."
-                exit 1
-            fi
+            echo "Verifying rollout..."
+            oc rollout status deployment/backend --timeout=120s
+            oc rollout status deployment/frontend --timeout=120s
+            echo "--- PIPELINE COMPLETE ---"
+            echo "URL: http://$(oc get route bookstore-frontend -o jsonpath='{.spec.host}')"
