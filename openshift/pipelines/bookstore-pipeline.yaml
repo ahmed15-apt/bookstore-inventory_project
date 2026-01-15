@@ -8,9 +8,9 @@ spec:
   params:
     - name: git-url
       type: string
-      description: "URL of the bookstore github repository"
+      description: "The URL of the bookstore git repository"
   tasks:
-    # 1. FETCH REPOSITORY: Download code to PVC
+    # 1. FETCH REPOSITORY: Download the source code from GitHub
     - name: fetch-repository
       taskRef:
         name: git-clone
@@ -24,7 +24,7 @@ spec:
         - name: revision
           value: "main"
 
-    # 2. BUILD IMAGES: Trigger OpenShift Binary Builds from the PVC folders
+    # 2. BUILD IMAGES: Trigger OpenShift Binary Builds for each tier
     - name: build-images
       runAfter: [fetch-repository]
       taskRef:
@@ -36,16 +36,16 @@ spec:
       params:
         - name: SCRIPT
           value: |
-            echo "Starting Database Build..."
+            echo "Building Database Image..."
             oc start-build bookstore-db-build --from-dir=$(workspaces.manifest-dir.path)/database --follow
             
-            echo "Starting Backend Build..."
+            echo "Building Backend Image (Node:18-alpine3.20)..."
             oc start-build bookstore-backend-build --from-dir=$(workspaces.manifest-dir.path)/backend --follow
             
-            echo "Starting Frontend Build..."
+            echo "Building Frontend Image..."
             oc start-build bookstore-frontend-build --from-dir=$(workspaces.manifest-dir.path)/frontend --follow
 
-    # 3. SCAN BACKEND: Security check on the produced image
+    # 3. SCAN BACKEND IMAGE: Security check using Trivy on the internal registry
     - name: scan-backend
       runAfter: [build-images]
       taskRef:
@@ -56,11 +56,18 @@ spec:
           workspace: shared-data
       params:
         - name: IMAGE_PATH
-          value: "bookstore-backend:1.0.0"
+          # Targets the internal OpenShift registry specifically
+          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/bookstore-backend:1.0.0"
         - name: ARGS
-          value: ["image", "--severity", "CRITICAL", "--exit-code", "1", "--ignore-unfixed"]
+          value: [
+            "image", 
+            "--severity", "CRITICAL", 
+            "--exit-code", "1", 
+            "--ignore-unfixed",
+            "--clear-cache"
+          ]
 
-    # 4. DEPLOY: Apply Kustomize manifests to the cluster
+    # 4. DEPLOY KUSTOMIZE: Apply Ingress, Route, and Deployments
     - name: deploy-kustomize
       runAfter: [scan-backend]
       taskRef:
@@ -72,13 +79,15 @@ spec:
       params:
         - name: SCRIPT
           value: |
-            # Navigate to your kustomization folder
+            # Navigate to the Kustomize base directory
             cd $(workspaces.manifest-dir.path)/openshift/base
             
-            echo "Applying Kustomize manifests..."
+            echo "Deploying Bookstore resources..."
             oc apply -k .
             
-            echo "Waiting for deployments to stabilize..."
+            echo "Verifying application status..."
             oc rollout status deployment/backend
             oc rollout status deployment/frontend
-            echo "Pipeline Completed Successfully!"
+            
+            echo "--- PIPELINE SUCCESSFUL ---"
+            echo "Frontend Route: $(oc get route bookstore-frontend -o jsonpath='{.spec.host}')"
