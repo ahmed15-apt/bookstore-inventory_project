@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # - pod-security.yaml  <-- REMOVED because you don't have permission for Namespace objects
   - secret.yaml
   - configmap.yaml
   - pvc.yaml
@@ -14,7 +13,6 @@ resources:
   - frontend-deployment.yaml
   - route.yaml
 
-# We remove includeSelectors: true to avoid the "immutable field" error
 labels:
   - includeSelectors: false
     pairs:

@@ -12,10 +12,6 @@ spec:
       labels:
         tier: frontend
     spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       containers:
       - name: frontend
         image: bookstore-frontend:1.0.0

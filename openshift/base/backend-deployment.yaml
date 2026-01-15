@@ -12,25 +12,12 @@ spec:
       labels:
         tier: backend
     spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       containers:
       - name: backend
-        # Points to the ImageStream created by your BuildConfig
-        image: bookstore-backend:1.0.0 
-        imagePullPolicy: IfNotPresent
+        image: bookstore-backend:1.0.0
         ports:
         - containerPort: 3000
           name: http
-        resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 256Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
