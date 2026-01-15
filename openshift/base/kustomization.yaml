@@ -13,8 +13,7 @@ resources:
   - frontend-deployment.yaml
   - route.yaml
 
-labels:
-  - includeSelectors: false
-    pairs:
-      app: bookstore
-      managed-by: kustomize
+# Must use commonLabels for compatibility with older 'oc' clients
+commonLabels:
+  app: bookstore
+  managed-by: kustomize

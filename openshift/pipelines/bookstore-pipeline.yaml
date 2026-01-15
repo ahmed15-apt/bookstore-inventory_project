@@ -24,7 +24,7 @@ spec:
         - name: revision
           value: "main"
 
-    # 2. BUILD IMAGES: Trigger OpenShift Binary Builds for each tier
+    # 2. BUILD IMAGES: Trigger OpenShift Binary Builds
     - name: build-images
       runAfter: [fetch-repository]
       taskRef:
@@ -39,13 +39,13 @@ spec:
             echo "Building Database Image..."
             oc start-build bookstore-db-build --from-dir=$(workspaces.manifest-dir.path)/database --follow
             
-            echo "Building Backend Image (Node:18-alpine3.20)..."
+            echo "Building Backend Image (Node:18)..."
             oc start-build bookstore-backend-build --from-dir=$(workspaces.manifest-dir.path)/backend --follow
             
             echo "Building Frontend Image..."
             oc start-build bookstore-frontend-build --from-dir=$(workspaces.manifest-dir.path)/frontend --follow
 
-    # 3. SCAN BACKEND IMAGE: Security check using Trivy on the internal registry
+    # 3. SCAN BACKEND IMAGE: Security check using Trivy
     - name: scan-backend
       runAfter: [build-images]
       taskRef:
@@ -56,7 +56,6 @@ spec:
           workspace: shared-data
       params:
         - name: IMAGE_PATH
-          # Targets the internal OpenShift registry specifically
           value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/bookstore-backend:1.0.0"
         - name: ARGS
           value: [
@@ -67,7 +66,7 @@ spec:
             "--clear-cache"
           ]
 
-    # 4. DEPLOY KUSTOMIZE: Apply Ingress, Route, and Deployments
+    # 4. DEPLOY KUSTOMIZE: Apply manifests with success verification
     - name: deploy-kustomize
       runAfter: [scan-backend]
       taskRef:
@@ -79,15 +78,23 @@ spec:
       params:
         - name: SCRIPT
           value: |
-            # Navigate to the Kustomize base directory
+            # 1. Enter the directory
             cd $(workspaces.manifest-dir.path)/openshift/base
             
-            echo "Deploying Bookstore resources..."
+            # 2. Apply and capture errors
+            echo "Deploying Bookstore resources using commonLabels..."
             oc apply -k .
             
-            echo "Verifying application status..."
-            oc rollout status deployment/backend
-            oc rollout status deployment/frontend
-            
-            echo "--- PIPELINE SUCCESSFUL ---"
-            echo "Frontend Route: $(oc get route bookstore-frontend -o jsonpath='{.spec.host}')"
+            # 3. Success check
+            if [ $? -eq 0 ]; then
+                echo "Deployment command sent. Waiting for rollout status..."
+                # We use a timeout to prevent the pipeline from hanging forever
+                oc rollout status deployment/backend --timeout=120s
+                oc rollout status deployment/frontend --timeout=120s
+                
+                echo "--- DEPLOYMENT SUCCESSFUL ---"
+                echo "Frontend URL: http://$(oc get route bookstore-frontend -o jsonpath='{.spec.host}')"
+            else
+                echo "ERROR: Deployment failed. Please check your kustomization.yaml or YAML syntax."
+                exit 1
+            fi
